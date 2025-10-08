@@ -81,17 +81,88 @@
     }
   },
   {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "try {\n    const apx = window.apx || window.adsPower || window.adspower || {};\n    const serial =\n      (window.profileInfo && (window.profileInfo.serialNumber || window.profileInfo.serial_number)) ||\n      (apx && (apx.serialNumber || apx.serial_number)) ||\n      window.serialNumber ||\n      window.serial_number ||\n      '';\n    return String(serial || '').trim();\n  } catch (e) {\n    return '';\n  }",
+      "variable": "serial_number",
+      "remark": ""
+    }
+  },
+  {
     "type": "googleSheet",
     "config": {
-      "type": "write",
+      "type": "read",
       "sheetId": "1U1ZsaQW-V5gB0UkMc7Kdi01lNRYdjmTCpAjKp20d_S8",
       "sheetName": "Discord - check login RPA",
-      "rangeType": "append",
-      "range": "",
-      "template": " [ \n    [ \"${serial_number}\", \"${check_login}\", \"${ds_nick}\" ]\n]",
-      "isKey": "1",
-      "variable": "",
+      "rangeType": "range",
+      "range": "A:C",
+      "template": "",
+      "isKey": "0",
+      "variable": "gs_existing_rows",
+      "remark": ""
+    }
+  },
+  {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "try {\n    const serial = ('${serial_number}' || '').trim();\n    if (!serial) return '';\n\n    const rawText = '${gs_existing_rows}';\n    let parsed;\n    try {\n      parsed = rawText ? JSON.parse(rawText) : undefined;\n    } catch (jsonError) {\n      parsed = undefined;\n    }\n\n    const raw = parsed || (Array.isArray(window.gs_existing_rows) ? { values: window.gs_existing_rows } : {});\n    const values = Array.isArray(raw?.values) ? raw.values : Array.isArray(raw) ? raw : [];\n\n    let startRow = 1;\n    if (raw && typeof raw.range === 'string') {\n      const match = raw.range.match(/^[A-Z]+(\\d+)/);\n      if (match && match[1]) {\n        startRow = parseInt(match[1], 10) || 1;\n      }\n    }\n\n    for (let idx = 0; idx < values.length; idx += 1) {\n      const row = values[idx];\n      const cell = Array.isArray(row) && row.length ? String(row[0] ?? '').trim() : '';\n      if (cell && cell === serial) {\n        const rowNumber = startRow + idx;\n        return `A${rowNumber}:C${rowNumber}`;\n      }\n    }\n\n    return '';\n  } catch (e) {\n    return '';\n  }",
+      "variable": "gs_target_range",
+      "remark": ""
+    }
+  },
+  {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "return ('${gs_target_range}' || '').trim() ? 'true' : 'false';",
+      "variable": "gs_has_row",
+      "remark": ""
+    }
+  },
+  {
+    "type": "ifElse",
+    "config": {
+      "condition": [
+        "gs_has_row"
+      ],
+      "relation": "equal",
+      "result": "true",
+      "hiddenChildren": false,
+      "children": [
+        {
+          "type": "googleSheet",
+          "config": {
+            "type": "write",
+            "sheetId": "1U1ZsaQW-V5gB0UkMc7Kdi01lNRYdjmTCpAjKp20d_S8",
+            "sheetName": "Discord - check login RPA",
+            "rangeType": "range",
+            "range": "${gs_target_range}",
+            "template": " [ \n    [ \"${serial_number}\", \"${check_login}\", \"${ds_nick}\" ]\n]",
+            "isKey": "0",
+            "variable": "",
+            "remark": ""
+          }
+        }
+      ],
       "remark": "",
+      "other": [
+        {
+          "type": "googleSheet",
+          "config": {
+            "type": "write",
+            "sheetId": "1U1ZsaQW-V5gB0UkMc7Kdi01lNRYdjmTCpAjKp20d_S8",
+            "sheetName": "Discord - check login RPA",
+            "rangeType": "append",
+            "range": "",
+            "template": " [ \n    [ \"${serial_number}\", \"${check_login}\", \"${ds_nick}\" ]\n]",
+            "isKey": "0",
+            "variable": "",
+            "remark": ""
+          }
+        }
+      ]
     }
   },
   {
