@@ -57,7 +57,6 @@
     "config": {
       "condition": [
         "check_login"
-@@ -58,44 +66,115 @@
           "type": "javaScript",
           "config": {
             "params": [],
