@@ -14,6 +14,12 @@
     "config": {}
   },
   {
+    "type": "closeOtherPage",
+    "config": {
+      "keepCurrent": true
+    }
+  },
+  {
     "type": "gotoUrl",
     "config": {
       "url": "https://discord.com/channels/@me",
@@ -23,7 +29,9 @@
   },
   {
     "type": "closeOtherPage",
-    "config": {}
+    "config": {
+      "keepCurrent": true
+    }
   },
   {
     "type": "waitTime",
@@ -49,12 +57,7 @@
     "config": {
       "condition": [
         "check_login"
-      ],
-      "relation": "equal",
-      "result": "true",
-      "hiddenChildren": false,
-      "children": [
-        {
+@@ -58,44 +66,115 @@
           "type": "javaScript",
           "config": {
             "params": [],
@@ -84,7 +87,7 @@
     "type": "javaScript",
     "config": {
       "params": [],
-      "content": "try {\n    const apx = window.apx || window.adsPower || window.adspower || {};\n    const serial =\n      (window.profileInfo && (window.profileInfo.serialNumber || window.profileInfo.serial_number)) ||\n      (apx && (apx.serialNumber || apx.serial_number)) ||\n      window.serialNumber ||\n      window.serial_number ||\n      '';\n    return String(serial || '').trim();\n  } catch (e) {\n    return '';\n  }",
+      "content": "try {\n    const candidates = [];\n    const addCandidate = (val) => {\n      if (val === undefined || val === null) return;\n      const text = String(val).trim();\n      if (!text) return;\n      candidates.push(text);\n    };\n\n    const collectFromObject = (obj) => {\n      if (!obj || typeof obj !== 'object') return;\n      addCandidate(obj.serialNumber);\n      addCandidate(obj.serial_number);\n      addCandidate(obj.serial);\n      addCandidate(obj.id);\n    };\n\n    const globalCandidates = [\n      window.profileInfo,\n      window.profile_info,\n      window.profile,\n      window.AdsPowerProfile,\n      window.apx,\n      window.adsPower,\n      window.adspower,\n      window.AdsPower,\n      window.AdsPower?.profileInfo,\n      window.apx?.profileInfo,\n      window.adsPower?.profileInfo,\n      window.adspower?.profileInfo,\n      window.AdsPower?.profile_info\n    ];\n    globalCandidates.forEach(collectFromObject);\n\n    addCandidate(window.serialNumber);\n    addCandidate(window.serial_number);\n\n    if (typeof window.name === 'string' && window.name) {\n      const match = window.name.match(/serial(?:Number|_number)?[:=]?([\\w-]+)/i);\n      if (match && match[1]) addCandidate(match[1]);\n    }\n\n    try {\n      const nav = navigator || window.navigator;\n      if (nav && typeof nav.serialNumber !== 'undefined') addCandidate(nav.serialNumber);\n      if (nav && typeof nav.serial_number !== 'undefined') addCandidate(nav.serial_number);\n    } catch (navErr) {}\n\n    try {\n      const ls = window.localStorage;\n      if (ls && typeof ls.length === 'number') {\n        for (let i = 0; i < ls.length; i += 1) {\n          const key = ls.key(i);\n          if (!key) continue;\n          if (!/serial|profile|ads/i.test(key)) continue;\n          let value;\n          try {\n            value = ls.getItem(key);\n          } catch (lsErr) {\n            continue;\n          }\n          if (!value) continue;\n          try {\n            const parsed = JSON.parse(value);\n            collectFromObject(parsed);\n          } catch (jsonErr) {\n            const match = String(value).match(/serial(?:Number|_number)?[\"']?\\s*[:=]\\s*[\"']?([A-Za-z0-9._-]+)/i);\n            if (match && match[1]) addCandidate(match[1]);\n          }\n        }\n      }\n    } catch (lsErrOuter) {}\n\n    const ordered = candidates\n      .map((text) => text.replace(/\\s+/g, '').trim())\n      .filter(Boolean)\n      .filter((text, idx, arr) => arr.indexOf(text) === idx);\n\n    if (!ordered.length) return '';\n\n    ordered.sort((a, b) => b.length - a.length);\n    return ordered[0];\n  } catch (e) {\n    return '';\n  }",
       "variable": "serial_number",
       "remark": ""
     }
@@ -107,7 +110,7 @@
     "type": "javaScript",
     "config": {
       "params": [],
-      "content": "try {\n    const serial = ('${serial_number}' || '').trim();\n    if (!serial) return '';\n\n    const rawText = '${gs_existing_rows}';\n    let parsed;\n    try {\n      parsed = rawText ? JSON.parse(rawText) : undefined;\n    } catch (jsonError) {\n      parsed = undefined;\n    }\n\n    const raw = parsed || (Array.isArray(window.gs_existing_rows) ? { values: window.gs_existing_rows } : {});\n    const values = Array.isArray(raw?.values) ? raw.values : Array.isArray(raw) ? raw : [];\n\n    let startRow = 1;\n    if (raw && typeof raw.range === 'string') {\n      const match = raw.range.match(/^[A-Z]+(\\d+)/);\n      if (match && match[1]) {\n        startRow = parseInt(match[1], 10) || 1;\n      }\n    }\n\n    for (let idx = 0; idx < values.length; idx += 1) {\n      const row = values[idx];\n      const cell = Array.isArray(row) && row.length ? String(row[0] ?? '').trim() : '';\n      if (cell && cell === serial) {\n        const rowNumber = startRow + idx;\n        return `A${rowNumber}:C${rowNumber}`;\n      }\n    }\n\n    return '';\n  } catch (e) {\n    return '';\n  }",
+      "content": "try {\n    const serial = ('${serial_number}' || '').trim();\n    if (!serial) return '';\n\n    const rawText = '${gs_existing_rows}';\n    let parsed;\n    try {\n      parsed = rawText ? JSON.parse(rawText) : undefined;\n    } catch (jsonError) {\n      parsed = undefined;\n    }\n\n    const raw = parsed || (Array.isArray(window.gs_existing_rows) ? { values: window.gs_existing_rows } : {});\n    const values = Array.isArray(raw?.values) ? raw.values : Array.isArray(raw) ? raw : [];\n\n    let startRow = 1;\n    if (raw && typeof raw.range === 'string') {\n      const match = raw.range.match(/^[^!]*!([A-Z]+)(\\d+)/);\n      if (match && match[2]) {\n        startRow = parseInt(match[2], 10) || 1;\n      } else {\n        const fallback = raw.range.match(/([A-Z]+)(\\d+)/);\n        if (fallback && fallback[2]) {\n          startRow = parseInt(fallback[2], 10) || 1;\n        }\n      }\n    }\n\n    const normalizedSerial = serial.toLowerCase();\n\n    for (let idx = 0; idx < values.length; idx += 1) {\n      const row = values[idx];\n      const cell = Array.isArray(row) && row.length ? String(row[0] ?? '').trim() : '';\n      if (!cell) continue;\n      const normalizedCell = cell.toLowerCase();\n      if (normalizedCell === normalizedSerial) {\n        const rowNumber = startRow + idx;\n        return `A${rowNumber}:C${rowNumber}`;\n      }\n    }\n\n    return '';\n  } catch (e) {\n    return '';\n  }",
       "variable": "gs_target_range",
       "remark": ""
     }
