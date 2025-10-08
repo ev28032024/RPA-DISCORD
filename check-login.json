@@ -1,0 +1,101 @@
+[
+  {
+    "type": "waitTime",
+    "config": {
+      "timeoutType": "fixedValue",
+      "timeout": 1000,
+      "timeoutMin": 1000,
+      "timeoutMax": 300000,
+      "remark": ""
+    }
+  },
+  {
+    "type": "newPage",
+    "config": {}
+  },
+  {
+    "type": "gotoUrl",
+    "config": {
+      "url": "https://discord.com/channels/@me",
+      "timeout": 30000,
+      "remark": ""
+    }
+  },
+  {
+    "type": "closeOtherPage",
+    "config": {}
+  },
+  {
+    "type": "waitTime",
+    "config": {
+      "timeoutType": "randomInterval",
+      "timeout": 1000,
+      "timeoutMin": 8000,
+      "timeoutMax": 10000,
+      "remark": ""
+    }
+  },
+  {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "try {\n    const isAuthedByPath = !location.pathname.startsWith('/login');\n    const hasDM = !!document.querySelector('a[href=\"/channels/@me\"]');\n    const ok = isAuthedByPath || hasDM;\n    return ok ? \"true\" : \"false\";   // <— строка, не boolean\n  } catch(e) { return \"false\"; }",
+      "variable": "check_login",
+      "remark": ""
+    }
+  },
+  {
+    "type": "ifElse",
+    "config": {
+      "condition": [
+        "check_login"
+      ],
+      "relation": "equal",
+      "result": "true",
+      "hiddenChildren": false,
+      "children": [
+        {
+          "type": "javaScript",
+          "config": {
+            "params": [],
+            "content": "try {\n    // даём интерфейсу дорендериться\n    await new Promise(r => setTimeout(r, 600));\n\n    // 1) берём контейнер нижней панели аккаунта (локаль-независимо)\n    const userPanel =\n      document.querySelector('section[class*=\"panels_\"]') || // универсально\n      document.querySelector('section[aria-label=\"User area\"]') || // EN\n      document.querySelector('section[aria-label=\"Пользовательская область\"]'); // RU\n\n    if (userPanel) {\n      // 2) в ней берём аватар с aria-label=\"username, Online/В сети/…\"\n      const avatar = userPanel.querySelector('[role=\"img\"][aria-label]');\n      if (avatar) {\n        const label = (avatar.getAttribute('aria-label') || '').trim();\n        // берём всё ДО первой запятой — это именно username/handle\n        let nick = label.split(',')[0].trim();\n\n        // подчистим: уберём хвосты типа эмодзи и повторы\n        // пример \"rnfwy6tzc 𒀭rnfwy6tzc\" -> \"rnfwy6tzc\"\n        nick = nick\n          .replace(/[\\u200D\\uFE0F]/g, '')          // служебные символы эмодзи\n          .replace(/\\s*[\\p{Emoji_Presentation}\\p{Extended_Pictographic}].*$/u, '') // всё после эмодзи\n          .replace(/^([A-Za-z0-9._-]{2,32}).*$/, '$1') // если повторяется, берём первый \"дискордный\" токен\n          .trim();\n\n        if (nick) return nick;\n      }\n\n      // 3) запасной вариант: текст из блока nameTag в нижней панели\n      const nameEl = userPanel.querySelector('[class*=\"nameTag\"] [class*=\"title\"], [class*=\"nameTag\"]');\n      if (nameEl) {\n        const raw = (nameEl.textContent || '').trim().replace(/\\s+/g, ' ');\n        // вытащим дискордный токен наподобие \"rnfwy6tzc\"\n        const m = raw.match(/[A-Za-z0-9._-]{2,32}/);\n        if (m) return m[0];\n        return raw;\n      }\n    }\n\n    return \"\";\n  } catch (e) {\n    return \"\";\n  }",
+            "variable": "ds_nick",
+            "remark": ""
+          }
+        }
+      ],
+      "remark": "",
+      "other": [
+        {
+          "type": "javaScript",
+          "config": {
+            "params": [],
+            "content": "return \"\";",
+            "variable": "nick_to_write",
+            "remark": "",
+            "_copyItemIndex": "0_6_1",
+            "_copyItemType": "children_children"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "googleSheet",
+    "config": {
+      "type": "write",
+      "sheetId": "1U1ZsaQW-V5gB0UkMc7Kdi01lNRYdjmTCpAjKp20d_S8",
+      "sheetName": "Discord - check login RPA",
+      "rangeType": "append",
+      "range": "",
+      "template": " [ \n    [ \"${serial_number}\", \"${check_login}\", \"${ds_nick}\" ]\n]",
+      "isKey": "1",
+      "variable": "",
+      "remark": "",
+    }
+  },
+  {
+    "type": "closeBrowser",
+    "config": {}
+  }
+]
