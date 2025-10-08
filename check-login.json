@@ -107,7 +107,7 @@
     "type": "javaScript",
     "config": {
       "params": [],
-      "content": "(() => {\n  const serial = ('${profile_serial}' || '').trim();\n  if (!serial) return '';\n\n  const rawText = '${gs_existing}';\n  let parsed;\n  try {\n    parsed = rawText ? JSON.parse(rawText) : undefined;\n  } catch (_) {\n    parsed = undefined;\n  }\n\n  const values = Array.isArray(parsed?.values) ? parsed.values : Array.isArray(parsed) ? parsed : [];\n\n  let startRow = 1;\n  const rangeText = typeof parsed?.range === 'string' ? parsed.range : '';\n  const explicitMatch = rangeText.match(/([A-Z]+)(\\d+)/);\n  if (explicitMatch && explicitMatch[2]) {\n    startRow = parseInt(explicitMatch[2], 10) || 1;\n  }\n\n  const normalizedSerial = serial.toLowerCase();\n  for (let index = 0; index < values.length; index += 1) {\n    const row = values[index];\n    if (!Array.isArray(row) || !row.length) continue;\n    const cellValue = String(row[0] ?? '').trim();\n    if (!cellValue) continue;\n    if (cellValue.toLowerCase() === normalizedSerial) {\n      const rowNumber = startRow + index;\n      return `A${rowNumber}:C${rowNumber}`;\n    }\n  }\n  return '';\n})();",
+      "content": "(() => {\n  const serial = ('${profile_serial}' || '').trim();\n  if (!serial) return '';\n\n  const rawText = '${gs_existing}';\n  let parsed;\n  try {\n    parsed = rawText ? JSON.parse(rawText) : undefined;\n  } catch (_) {\n    parsed = undefined;\n  }\n\n  const values = Array.isArray(parsed?.values) ? parsed.values : Array.isArray(parsed) ? parsed : [];\n\n  let startRow = 1;\n  const rangeText = typeof parsed?.range === 'string' ? parsed.range : '';\n  const explicitMatch = rangeText.match(/([A-Z]+)(\\d+)/);\n  if (explicitMatch && explicitMatch[2]) {\n    startRow = parseInt(explicitMatch[2], 10) || 1;\n  }\n\n  const normalizedSerial = serial.toLowerCase();\n  for (let index = 0; index < values.length; index += 1) {\n    const row = values[index];\n    if (!Array.isArray(row) || !row.length) continue;\n\n    const cellValue = String(row[0] ?? '').trim();\n    if (!cellValue) continue;\n    if ((startRow + index) === 1 && cellValue.toLowerCase() === 'profile_serial') continue;\n\n    if (cellValue.toLowerCase() === normalizedSerial) {\n      const rowNumber = startRow + index;\n      return `B${rowNumber}:C${rowNumber}`;\n    }\n  }\n  return '';\n})();",
       "variable": "gs_target_range",
       "remark": "находим диапазон для перезаписи"
     }
@@ -139,7 +139,7 @@
             "sheetName": "Discord - check login RPA",
             "rangeType": "range",
             "range": "${gs_target_range}",
-            "template": " [ \n    [ \"${profile_serial}\", \"${discord_login}\", \"${discord_nickname}\" ]\n ]",
+            "template": " [ \n    [ \"${discord_login}\", \"${discord_nickname}\" ]\n ]",
             "isKey": "0",
             "variable": "",
             "remark": "обновляем существующую строку"
