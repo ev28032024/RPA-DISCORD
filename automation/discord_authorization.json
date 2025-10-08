@@ -1,0 +1,70 @@
+[
+  {
+    "type": "waitTime",
+    "config": {
+      "timeoutType": "fixedValue",
+      "timeout": 2000,
+      "remark": "stabilize environment"
+    }
+  },
+  {
+    "type": "newPage",
+    "config": {}
+  },
+  {
+    "type": "closeOtherPage",
+    "config": {
+      "keepCurrent": true,
+      "remark": "ensure single active tab"
+    }
+  },
+  {
+    "type": "gotoUrl",
+    "config": {
+      "url": "https://discord.com/channels/@me",
+      "timeout": 45000,
+      "waitUntil": "load",
+      "remark": "open Discord target page"
+    }
+  },
+  {
+    "type": "waitTime",
+    "config": {
+      "timeoutType": "randomInterval",
+      "timeoutMin": 3000,
+      "timeoutMax": 6000,
+      "remark": "allow interface to settle"
+    }
+  },
+  {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "(() => {\n  const meta = {\"login\": [\"a[href=\\\"/channels/@me\\\"][aria-current=\\\"page\\\"]\", \"[data-list-item-id=\\\"guildsnav___home\\\"]\", \"[aria-label=\\\"Direct Messages\\\"]\", \"[aria-label=\\\"\\u041b\\u0438\\u0447\\u043d\\u044b\\u0435 \\u0441\\u043e\\u043e\\u0431\\u0449\\u0435\\u043d\\u0438\\u044f\\\"]\"], \"logout\": [\"form[action*=\\\"/login\\\"]\", \"[data-testid=\\\"login-form\\\"]\"], \"display\": [\"section[class*=\\\"panels_\\\"] [role=\\\"img\\\"][aria-label]\", \"section[class*=\\\"panels_\\\"] [class*=\\\"nameTag\\\"]\", \"[class*=\\\"title-\\\"], header h1\"], \"login_blocklist\": [\"/login\", \"/auth\"]};\n  const result = { authorized: false, displayName: '', path: location.pathname || '' };\n  try {\n    const current = String(location.href || '').trim();\n    const target = \"https://discord.com/channels/@me\";\n    if (!current.startsWith(target)) {\n      result.path = new URL(current).pathname || '';\n    }\n    const normalizedPath = (result.path || '').toLowerCase();\n    if (Array.isArray(meta.login_blocklist)) {\n      for (const fragment of meta.login_blocklist) {\n        if (!fragment) continue;\n        if (normalizedPath.includes(String(fragment).toLowerCase())) {\n          result.authorized = false;\n          window.__authorization_check = result;\n          return 'false';\n        }\n      }\n    }\n    const hasIndicator = (selectors) => {\n      if (!Array.isArray(selectors) || !selectors.length) return false;\n      return selectors.some((selector) => {\n        try {\n          return !!document.querySelector(selector);\n        } catch (error) {\n          console.debug('selector evaluation failed', selector, error);\n          return false;\n        }\n      });\n    };\n    result.authorized = hasIndicator(meta.login);\n    if (!result.authorized && hasIndicator(meta.logout)) {\n      result.authorized = false;\n    } else if (!result.authorized) {\n      const path = normalizedPath;\n      if (path && !path.includes('/login') && !path.includes('auth')) {\n        result.authorized = true;\n      }\n    }\n    const collectText = (selectors) => {\n      if (!Array.isArray(selectors)) return [];\n      const values = [];\n      for (const selector of selectors) {\n        try {\n          const element = document.querySelector(selector);\n          if (!element) continue;\n          const text = (element.getAttribute('aria-label') || element.textContent || '').trim();\n          if (text) values.push(text);\n        } catch (_) {}\n      }\n      return values;\n    };\n    const names = collectText(meta.display)\n      .map((text) => text.replace(/[\\u200d\\u200c\\u200b\\u200e\\u200f\\uFE0F]/g, '').replace(/\\s+/g, ' ').trim())\n      .filter(Boolean);\n    if (names.length) {\n      result.displayName = names[0];\n    }\n  } catch (error) {\n    console.error('authorization detection failed', error);\n  }\n  window.__authorization_check = result;\n  return result.authorized ? 'true' : 'false';\n})();",
+      "variable": "service_authorized",
+      "remark": "detect authorization state"
+    }
+  },
+  {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "(() => {\n  const info = window.__authorization_check;\n  if (info && typeof info.displayName === 'string') {\n    return info.displayName;\n  }\n  return '';\n})();",
+      "variable": "service_display_name",
+      "remark": "capture display name"
+    }
+  },
+  {
+    "type": "javaScript",
+    "config": {
+      "params": [],
+      "content": "(() => {\n  const bucket = new Set();\n  const push = (value) => {\n    if (value === undefined || value === null) return;\n    const text = String(value).trim();\n    if (!text) return;\n    bucket.add(text);\n  };\n  const inspectObject = (obj) => {\n    if (!obj || typeof obj !== 'object') return;\n    for (const key of ['serialNumber', 'serial_number', 'profileSerial', 'id', 'serial']) {\n      if (key in obj) push(obj[key]);\n    }\n  };\n  try {\n    const globals = ['profileInfo', 'profile_info', 'AdsPowerProfile', 'AdsPower', 'adsPower', 'apx'];\n    for (const key of globals) {\n      try {\n        const candidate = window[key];\n        inspectObject(candidate);\n        if (candidate && typeof candidate === 'object') {\n          inspectObject(candidate.profileInfo);\n          inspectObject(candidate.profile_info);\n        }\n      } catch (_) {}\n    }\n    const storageScan = (storage) => {\n      if (!storage || typeof storage.length !== 'number') return;\n      for (let index = 0; index < storage.length; index += 1) {\n        const key = storage.key(index);\n        if (!key || !/serial|profile|ads/i.test(key)) continue;\n        let value = null;\n        try {\n          value = storage.getItem(key);\n        } catch (_) {\n          continue;\n        }\n        if (!value) continue;\n        try {\n          const parsed = JSON.parse(value);\n          inspectObject(parsed);\n        } catch (_) {\n          const match = String(value).match(/serial(?:Number|_number)?['\"=:\\\\s]*([A-Za-z0-9._-]+)/i);\n          if (match && match[1]) push(match[1]);\n        }\n      }\n    };\n    storageScan(window.localStorage);\n    storageScan(window.sessionStorage);\n    if (typeof window.name === 'string') {\n      const match = window.name.match(/serial(?:Number|_number)?[:=]?([A-Za-z0-9._-]+)/i);\n      if (match && match[1]) push(match[1]);\n    }\n  } catch (error) {\n    console.warn('profile serial detection failed', error);\n  }\n  const ordered = Array.from(bucket).sort((a, b) => b.length - a.length || a.localeCompare(b));\n  const serial = ordered[0] || '';\n  window.__authorization_profile_serial = serial;\n  return serial;\n})();",
+      "variable": "profile_serial",
+      "remark": "detect profile serial"
+    }
+  },
+  {
+    "type": "closeBrowser",
+    "config": {}
+  }
+]

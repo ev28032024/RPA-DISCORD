@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "adspower-rpa"
+version = "0.1.0"
+description = "Automation toolkit for AdsPower RPA authorization checks"
+authors = [
+    { name = "Automation Team" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27.0,<0.28.0",
+    "pydantic>=1.10.0,<2.0.0",
+    "pyyaml>=6.0",
+    "rich>=13.7.0",
+    "typer>=0.9.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0"
+]
+
+[project.scripts]
+adspower-check = "adspower_rpa.cli:app"

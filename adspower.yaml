@@ -1,0 +1,28 @@
+adspower:
+  base_url: http://local.adspower.net:50325
+  timeout_seconds: 45
+service:
+  name: Discord
+  target_url: https://discord.com/channels/@me
+  selectors:
+    login_indicators:
+      - 'a[href="/channels/@me"][aria-current="page"]'
+      - '[data-list-item-id="guildsnav___home"]'
+      - '[aria-label="Direct Messages"]'
+      - '[aria-label="Личные сообщения"]'
+    logout_indicators:
+      - 'form[action*="/login"]'
+      - '[data-testid="login-form"]'
+    display_name:
+      - 'section[class*="panels_"] [role="img"][aria-label]'
+      - 'section[class*="panels_"] [class*="nameTag"]'
+      - '[class*="title-"], header h1'
+  login_path_blocklist:
+    - '/login'
+    - '/auth'
+profiles:
+  - id: PROFILE_SERIAL_1
+    label: Main account
+  - id: PROFILE_SERIAL_2
+    label: Backup account
+concurrency: 3
